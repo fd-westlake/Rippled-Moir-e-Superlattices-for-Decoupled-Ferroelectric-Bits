@@ -1,0 +1,107 @@
+{
+  "type_map": ["B", "N", "C"],
+  "mass_map": [10.8, 14.0, 12.0],
+  "init_data_prefix":"./dataset",
+  "init_data_sys": [
+"./original/B2N2C0", "./original/B8N8C0",  "./original/B71N72C1",  "./original/B32N32C0",  "./original/B31N32C1",
+ "./deepmd_data/B31N32C1",  "./deepmd_data/B32N32C0",
+ "./new/B8N8C0",  "./new/B32N32C0", "./new/B31N32C1"
+  ],
+  "sys_configs": [
+    ["./POSCAR_prefect","./POSCAR_neb"],
+    ["./POSCAR_CB0","./POSCAR_CB4","./POSCAR-neb1"],
+    ["./POSCAR_AA","./POSCAR_AB"]
+  ],
+    "_comment": "train",
+    "numb_models": 4,
+    "dp_compress": false,
+    "default_training_param": {
+        "model":{
+            "type_map":[
+                "B", 
+                "N",
+                "C"               
+             ],
+        "descriptor": {
+                "type": "se_e2_a",
+                "sel": "auto",
+                "rcut_smth": 1,
+                "rcut": 6,
+                "neuron": [
+                    25,
+                    50,
+                    100
+                ],
+                "resnet_dt": false,
+                "axis_neuron": 4,
+                "seed": 1
+            },
+            "fitting_net": {
+                "neuron": [
+                    120,
+                    120,
+                    120
+                ],
+                "resnet_dt": true,
+                "seed": 1
+            }
+        },
+        "learning_rate": {
+            "type": "exp",
+            "start_lr": 0.001,
+            "stop_lr": 3.51E-8,
+            "decay_steps": 20000
+        },
+        "loss": {
+            "start_pref_e": 0.2,
+            "limit_pref_e": 20,
+            "start_pref_f": 100,
+            "limit_pref_f": 20,
+            "start_pref_v": 0.02,
+            "limit_pref_v": 1
+        },
+        "training": {
+            "stop_batch": 500000,
+            "disp_file": "lcurve.out",
+            "disp_freq": 1000,
+            "numb_test": 4,
+            "save_freq": 1000,
+            "save_ckpt": "model.ckpt",
+            "disp_training": true,
+            "time_training": true,
+            "profiling": false,
+            "profiling_file": "timeline.json",
+            "_comment": "that's all"
+        }
+    },
+    "model_devi_dt": 0.0005,
+    "model_devi_skip": 100,
+    "model_devi_f_trust_lo": 0.08,
+    "model_devi_f_trust_hi": 0.15,
+    "model_devi_e_trust_lo": 10000000000.0,
+    "model_devi_e_trust_hi": 10000000000.0,
+    "model_devi_clean_traj": false,
+    "model_devi_merge_traj": true,
+    "model_devi_jobs": [
+    {"_idx": 0, "ensemble": "nvt", "nsteps": 800,  "sys_idx": [0,1,2], "temps": [400],"trj_freq": 50},
+    {"_idx": 1, "ensemble": "nvt", "nsteps": 80000, "sys_idx": [0,1,2], "temps": [300,400,500],"trj_freq": 50},
+    {"_idx": 2, "ensemble": "nvt", "nsteps": 80000, "sys_idx": [0,1,2], "temps": [300,400,500],"trj_freq": 50},
+    {"_idx": 3, "ensemble": "nvt", "nsteps": 80000, "sys_idx": [0,1,2], "temps": [300,400,500],"trj_freq": 50},
+    {"_idx": 4, "ensemble": "nvt", "nsteps": 80000, "sys_idx": [0,1,2], "temps": [300,500,700],"trj_freq": 50},
+    {"_idx": 5, "ensemble": "nvt", "nsteps": 80000, "sys_idx": [0,1,2], "temps": [300,500,700],"trj_freq": 50},
+    {"_idx": 6, "ensemble": "npt", "nsteps": 80000, "press":[0], "sys_idx": [0,1,2], "temps": [300,400,500],"trj_freq": 50},
+    {"_idx": 7, "ensemble": "npt", "nsteps": 80000, "press":[0], "sys_idx": [0,1,2], "temps": [300,400,500],"trj_freq": 50}
+             ],
+    "fp_style": "vasp",
+    "shuffle_poscar": false,
+    "fp_task_max": 30,
+    "fp_task_min": 10,
+    "ignore_exit_code": false,
+    "fp_pp_path": "./",
+    "fp_pp_files": [
+    "POTCAR_B",
+    "POTCAR_N",
+    "POTCAR_C"
+    ],
+     "fp_incar": "./INCAR_scf"
+}
