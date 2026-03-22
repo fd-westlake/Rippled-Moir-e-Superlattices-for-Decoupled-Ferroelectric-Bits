@@ -1,0 +1,38 @@
+General:
+
+ISTART = 0
+LCHARG = .FALSE.
+LWAVE = .FALSE.
+LREAL = Auto
+LEPSILON = .TRUE.
+ENCUT = 600 
+PREC = Accurate
+EDIFF = 1E-7
+
+#Ionic relaxion
+
+ISIF = 2
+NSW = 1
+NELM = 200
+NELMIN = 4
+POTIM = 0.2
+IBRION = 8
+ICHARG = 2
+
+ISMEAR = 0
+SIGMA = 0.05
+
+#Electronic relaxation 2
+ALGO = Normal
+GGA = PE
+
+#VDW parameter
+IVDW = 10
+
+# External electric field
+
+LDIPOL = .TRUE.
+IDIPOL = 3
+DIPOL = 0.5 0.5 0.5
+EFIELD = 0.0
+
