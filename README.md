@@ -1,5 +1,7 @@
 # Rippled-Moir-e-Superlattices-for-Decoupled-Ferroelectric-Bits
 
+> This repository contains all calculations, data, and model files related to the study of rippled moiré superlattices for decoupled ferroelectric bits, as described in [ arXiv:2510.13568]. It includes first-principles (DFT) calculations, molecular dynamics simulations, and machine learning models.
+
 ## Folder Structure
 
 ###  database/
