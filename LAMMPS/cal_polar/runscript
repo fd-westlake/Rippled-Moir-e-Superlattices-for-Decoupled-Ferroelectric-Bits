@@ -1,0 +1,60 @@
+#!/bin/bash
+#SBATCH --job-name=DP_MD
+#SBATCH --nodes=1
+#SBATCH --partition=8V100-normal
+#SBATCH --ntasks=1              # Nodes * GPUs-per-node * Ranks-per-GPU
+#SBATCH --gpus-per-node=1       # Specify the GPUs-per-node
+#SBATCH --qos=normal   # Depending on your needs [Priority: 4gpu (default) > 8gpu > normal > huge]
+readonly ranks_per_gpu=$((SLURM_NTASKS/SLURM_NNODES/SLURM_GPUS_ON_NODE))
+if (( ranks_per_gpu > 1 )) && (( ranks_per_gpu <= 3 ));then
+    echo "INFO: Will utilize CUDA MPS and run $ranks_per_gpu Ranks-per-GPU."
+    export CUDA_MPS_PIPE_DIRECTORY=/tmp/CUDA_MPS-Slurm_Job_${SLURM_JOB_ID}
+    export CUDA_MPS_LOG_DIRECTORY=/tmp/CUDA_MPS-Slurm_Job_${SLURM_JOB_ID}
+    if (( SLURM_NNODES > 1 ));then
+        pdsh -R ssh -w $SLURM_NODELIST "export CUDA_MPS_PIPE_DIRECTORY=${CUDA_MPS_PIPE_DIRECTORY};export CUDA_MPS_LOG_DIRECTORY=${CUDA_MPS_LOG_DIRECTORY};nvidia-cuda-mps-control -d"
+        trap "pdsh -R ssh -w $SLURM_NODELIST 'export CUDA_MPS_PIPE_DIRECTORY=${CUDA_MPS_PIPE_DIRECTORY};export CUDA_MPS_LOG_DIRECTORY=${CUDA_MPS_LOG_DIRECTORY};echo quit|nvidia-cuda-mps-control'" EXIT
+    else
+        nvidia-cuda-mps-control -d
+        trap "echo quit | nvidia-cuda-mps-control" EXIT
+    fi
+    if (( ranks_per_gpu == 2 ));then
+        map_opt_pe=''
+    else
+        map_opt_pe=':pe=1'
+    fi
+    if (( SLURM_GPUS_ON_NODE == 1 ));then
+        map_opt="ppr:$ranks_per_gpu:l3cache$map_opt_pe"
+    else
+        map_opt="ppr:$((2*ranks_per_gpu)):l3cache$map_opt_pe"
+    fi
+elif (( ranks_per_gpu == 1 )) && (( SLURM_GPUS_ON_NODE == 1 ));then
+    map_opt='ppr:1:l3cache:pe=3'
+elif (( ranks_per_gpu == 1 )) && (( SLURM_GPUS_ON_NODE > 1 ));then
+    map_opt='ppr:2:l3cache:pe=3'
+else
+    echo 'ERROR: $ranks_per_gpu should be an integer between 1 and 3.'
+    exit 1
+fi
+#export OMP_NUM_THREADS=$((6/ranks_per_gpu))
+export OMP_NUM_THREADS=2
+
+# Below are executing commands
+
+rm ptot.dat
+rm polar*
+rm peaks*
+rm *.lammpstrj
+work_directory='pwd'
+module load lammps/29aug2024-dpv3-kcmmod
+for i in {0..800..2}
+do
+echo $i
+sed -i "6c variable        label           equal $i" input1.lammps
+mpirun -np $((ranks_per_gpu*SLURM_GPUS_ON_NODE*SLURM_NNODES)) -map-by $map_opt lmp -sf omp -pk omp $OMP_NUM_THREADS -in input1.lammps
+python avg_polar.py $i >> ptot.dat
+done
+
+# Must explicitly exit
+exit
+
+
