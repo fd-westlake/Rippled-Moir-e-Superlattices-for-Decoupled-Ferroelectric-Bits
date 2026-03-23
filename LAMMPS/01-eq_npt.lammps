@@ -1,0 +1,48 @@
+# ==========================================
+# LAMMPS NPT Equilibration Script
+# ==========================================
+
+variable        TEMP            equal 300.000
+variable        PRES            equal 1.01325
+variable        TAU_T           equal 0.10000
+variable        TAU_P           equal 0.50000
+
+units           metal
+boundary        p p p
+atom_style      atomic
+
+neighbor        0.0 bin
+neigh_modify    every 10 delay 0 check yes
+
+box             tilt large
+read_data       ./data.1
+change_box      all triclinic
+
+# --- Mass and Potential ---
+mass            1 10.8      # B
+mass            2 14.0      # N
+mass            3 12.011000 # C (if present)
+
+pair_style      deepmd frozen_model_compressed.pb
+pair_coeff      * *
+
+# --- Velocity Initialization ---
+velocity        all create ${TEMP} 58795
+
+# --- Output Settings ---
+thermo          500
+thermo_style    custom step pe ke etotal temp press vol cella cellb cellc cellalpha cellbeta cellgamma
+
+dump            1 all custom 500 npt_eq.lammpstrj id type x y z
+
+# --- Run Simulation ---
+timestep        0.001
+
+# NPT ensemble: constant T, and independent constant P for x, y, and xy
+fix             2 all npt temp ${TEMP} ${TEMP} ${TAU_T} x ${PRES} ${PRES} ${TAU_P} y ${PRES} ${PRES} ${TAU_P} xy ${PRES} ${PRES} ${TAU_P}
+
+run             300000
+
+# --- Save Results ---
+write_restart   restart.2
+write_data      data.2

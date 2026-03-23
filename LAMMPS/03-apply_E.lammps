@@ -1,0 +1,111 @@
+variable        TEMP            equal 300.000
+variable        PRES            equal 1.01325
+variable        TAU_T           equal 0.10000
+variable        TAU_P           equal 0.50000
+variable atomnum equal count(all)
+
+units           metal
+boundary        p p p
+atom_style      atomic
+
+neighbor        0.0 bin
+neigh_modify every 10 delay 0 check yes
+
+box          tilt large
+read_data  ./data.1
+
+change_box   all triclinic
+mass            1 10.8
+mass            2 14.0
+mass            3 12.011000
+pair_style      deepmd frozen_model_compressed.pb
+pair_coeff     * * 
+
+
+group   B  type 1
+group   N  type 2
+group   C  type 3
+
+velocity        all create ${TEMP} 58795
+
+variable Bdn_h equal ${atomnum}/4
+variable Bup_h equal ${Bdn_h}*2
+variable Ndn_h equal ${Bdn_h}*3  # 
+variable Nup_h equal ${Bdn_h}*4  # 
+
+variable Bdn_l equal 1
+variable Bup_l equal ${Bdn_h}+1
+variable Ndn_l equal ${Bdn_h}*2+1
+variable Nup_l equal ${Bdn_h}*3+1
+
+group Bdn id ${Bdn_l}:${Bdn_h}
+group Bup id ${Bup_l}:${Bup_h}
+group Ndn id ${Ndn_l}:${Ndn_h}
+group Nup id ${Nup_l}:${Nup_h}
+
+#variable VALUEX  equal 0.0
+#variable VALUEY  equal 0.0
+variable VALUEZ equal 0.05
+#============================ B sliding vector ============================================================
+compute Bdnx_tot Bdn coordxmin/atom cutoff 4 group Nup  # the cutoff is the distance. coordx of Bdn minus coordx of Nup
+compute Bdny_tot Bdn coordymin/atom cutoff 4 group Nup
+#compute Bdnz Bdn coordzmin/atom cutoff 4 group Nup
+variable Bdny atom c_Bdnx_tot
+variable Bdnx atom -c_Bdny_tot
+
+compute Bupx_tot Bup coordxmin/atom cutoff 4 group Ndn #obtain of the x vector of the minimum bonds, the direction is N point to B
+compute Bupy_tot Bup coordymin/atom cutoff 4 group Ndn
+#compute Bupz Bup coordzmin/atom cutoff 4 group Ndn
+variable Bupy atom c_Bupx_tot
+variable Bupx atom -c_Bupy_tot
+
+#============================= electric field induced force in BN plane coordination =============================
+variable Bdnfy atom -${VALUEZ}*((-0.0055*sin(2*v_Bdnx))+(-0.005*v_Bdnx*v_Bdny)+(0.004*v_Bdnx*cos(2*v_Bdny))+(0.01*v_Bdny*sin(2*v_Bdnx))+(-0.0096*sin(2*v_Bdnx)*cos(2*v_Bdny))+(0.003*v_Bdnx^2*sin(2*v_Bdnx))+(-0.001*v_Bdnx*v_Bdny*cos(2*v_Bdny))+(0.002*v_Bdny*sin(2*v_Bdnx)*cos(2*v_Bdny))+(0.0009*sin(2*v_Bdnx)*cos(2*v_Bdny)^2))
+variable Bdnfx atom ${VALUEZ}*(-0.00285-0.0046*v_Bdny-0.002*cos(2*v_Bdnx)+(0.0046*cos(2*v_Bdny))+(0.0014*v_Bdnx^2)-0.007*v_Bdny*cos(2*v_Bdnx)-0.0075*v_Bdny*cos(v_Bdny*2)+(0.002*cos(v_Bdny*2)^2)+(0.0019*v_Bdny^3)+(0.0026*v_Bdny^2*cos(v_Bdnx*2))-0.0016*v_Bdny*cos(v_Bdnx*2)^2-0.003*v_Bdny*cos(v_Bdnx*2)*cos(v_Bdny*2)-0.0013*v_Bdny*cos(v_Bdny*2)^2-0.0019*cos(v_Bdnx*2)^2*cos(v_Bdny*2))
+#variable Bdnfz atom 0
+
+variable Bupfy atom ${VALUEZ}*((-0.0055*sin(2*v_Bupx))+(-0.005*v_Bupx*v_Bupy)+(0.004*v_Bupx*cos(2*v_Bupy))+(0.01*v_Bupy*sin(2*v_Bupx))+(-0.0096*sin(2*v_Bupx)*cos(2*v_Bupy))+(0.003*v_Bupx^2*sin(2*v_Bupx))+(-0.001*v_Bupx*v_Bupy*cos(2*v_Bupy))+(0.002*v_Bupy*sin(2*v_Bupx)*cos(2*v_Bupy))+(0.0009*sin(2*v_Bupx)*cos(2*v_Bupy)^2))
+
+variable Bupfx atom -${VALUEZ}*(-0.0028-0.0046*v_Bupy-0.002*cos(2*v_Bupx)+(0.0046*cos(2*v_Bupy))+(0.0014*v_Bupx^2)-0.007*v_Bupy*cos(2*v_Bupx)-0.0075*v_Bupy*cos(v_Bupy*2)+(0.002*cos(v_Bupy*2)^2)+(0.0019*v_Bupy^3)+(0.0026*v_Bupy^2*cos(v_Bupx*2))-0.0016*v_Bupy*cos(v_Bupx*2)^2-0.003*v_Bupy*cos(v_Bupx*2)*cos(v_Bupy*2)-0.0013*v_Bupy*cos(v_Bupy*2)^2-0.0019*cos(v_Bupx*2)^2*cos(v_Bupy*2))
+#variable Bupfz atom 0
+
+
+#============================== add force ================================================
+
+#compute storef all property/atom fx fy fz
+#dump store all custom 100 store.lammpstrj id type x y z c_storef[1] c_storef[2] c_storef[3]
+variable freq equal 50
+
+fix ffB B store/state ${freq} v_Bdnfx v_Bdnfy v_Bupfx v_Bupfy
+#fix ffBdn Bdn ave/atom ${freq} 1 ${freq} v_Bdnfx_rot v_Bdnfy_rot v_Bdnfz_rot
+variable vffBdnx atom f_ffB[1]
+variable vffBdny atom f_ffB[2]
+variable vffBupx atom f_ffB[3]
+variable vffBupy atom f_ffB[4]
+
+compute Bdnxsum Bdn reduce sum v_vffBdnx
+compute Bdnysum Bdn reduce sum v_vffBdny
+#compute Bdnzsum Bdn reduce sum v_vffBdnz
+
+compute Bupxsum Bup reduce sum v_vffBupx
+compute Bupysum Bup reduce sum v_vffBupy
+#compute Bupzsum Bup reduce sum v_vffBupz
+
+variable xforce equal -(c_Bdnxsum+c_Bupxsum)/${atomnum}*2 # compensation force
+variable yforce equal -(c_Bdnysum+c_Bupysum)/${atomnum}*2
+#variable zforce equal -(c_Bdnzsum+c_Bupzsum)/${atomnum}*2
+
+
+fix             fBdn  Bdn addforce v_vffBdnx v_vffBdny 0
+fix             fBup  Bup addforce v_vffBupx v_vffBupy 0
+fix             fcompens B addforce v_xforce v_yforce 0 # add compensation force
+thermo          500
+thermo_style    custom step pe ke etotal temp press vol cella cellb cellc cellalpha cellbeta cellgamma
+dump 1 all custom 500 ef.lammpstrj id type x y z v_Bdnx v_Bdny v_vffBdnx v_vffBdny v_Bupx v_Bupy v_vffBupx v_vffBupy #v_vffBdn[1] v_vffBdn[2] v_vffBdn[3]
+timestep       0.001
+fix       2 all nvt temp ${TEMP} ${TEMP} ${TAU_T}
+
+run 200000
+
+write_restart    restart.3
+write_data       data.3
