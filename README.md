@@ -25,6 +25,9 @@ Files for LAMMPS molecular dynamics simulations.
   - **`avg_z.py`**: Python script to compute the average polarization across frames.
   - **`input.lammps`**: Input script for LAMMPS to read trajectories and compute local dipoles.
   - **`runscript`**: Job submission script for cluster execution.
+- **`strain.py`**: Python script for applying biaxial strain to the structure.
+- **`z_range.py`**: Python script for calculating the Z-coordinate range of atoms (maximum minus minimum value).
+
 
 ###  DFT/
 Files and scripts for first-principles (DFT) calculations.
