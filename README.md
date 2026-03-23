@@ -38,3 +38,6 @@ Files and scripts for first-principles (DFT) calculations.
 
 ###  figure/
 High-resolution figures from the manuscript.
+
+## Folder Structure
+We have also made a public wiki that explains how to implement dynamic BEC simulation in LAMMPS：https://liutheorylab.github.io/Tutorial/LAMMPS_DynamicBEC/
