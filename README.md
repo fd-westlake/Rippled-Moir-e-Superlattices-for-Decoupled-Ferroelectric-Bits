@@ -21,6 +21,10 @@ Files for LAMMPS molecular dynamics simulations.
 - **`02-eq_nvt.lammps`**: Script for NPT simulation.
 - **`03-apply_E.lammps`**: Script for applying electric field.
 - **`04-apply_bub.lammps`**: Script for applying bubble.
+- **`cal_polar/`**: Directory containing tools to split trajectory frames and calculate the total polarization.
+  - **`avg_z.py`**: Python script to compute the average polarization across frames.
+  - **`input.lammps`**: Input script for LAMMPS to read trajectories and compute local dipoles.
+  - **`runscript`**: Job submission script for cluster execution.
 
 ###  DFT/
 Files and scripts for first-principles (DFT) calculations.
