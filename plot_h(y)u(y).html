@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>yc 与相位 φ*</title>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)'], ['$', '$']] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; margin: 16px; color:#222; }
+h3 { margin: 0 0 10px 0; }
+
+.ctrl {
+  display:grid;
+  grid-template-columns: 1fr 120px;
+  gap:8px;
+  max-width:760px;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.ctrl input[type=range] {
+  width:100%;
+  grid-column:1/span 2;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(300px,1fr));
+  gap:12px;
+}
+
+.card {
+  border:1px solid #ddd;
+  border-radius:8px;
+  background:#fafafa;
+  padding:8px;
+}
+
+.title { font-size:14px; margin-bottom:6px; }
+
+canvas {
+  width:100%;
+  height:250px;
+  border:1px solid #ccc;
+  background:#fff;
+}
+
+.info {
+  margin-top:10px;
+  border:1px dashed #bbb;
+  padding:8px;
+  background:#fff;
+  font-family:monospace;
+  line-height:1.5;
+}
+
+.small { margin-top:6px; font-size:12px; color:#666; }
+</style>
+</head>
+
+<body>
+
+<h3>使用正确的 \(u(y)\)：\(u = A_u[\sin(2\pi y/L_b+\phi)-\sin\phi]\)</h3>
+
+<div class="ctrl">
+<label for="yc">\(y_c / L_b\)</label>
+<div id="ycText">0.50</div>
+<input id="yc" type="range" min="0.05" max="0.95" step="0.005" value="0.50">
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="title">(a) \(h(y)\)</div>
+    <canvas id="c1" width="420" height="250"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="title">(b) \(u(y)\)</div>
+    <canvas id="c2" width="420" height="250"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="title">(c) \(\phi(y_c)\)</div>
+    <canvas id="c3" width="420" height="250"></canvas>
+  </div>
+</div>
+
+<div class="info" id="info"></div>
+
+<div class="small">
+默认取 \(L_b=1,\ m=1,\ A_u=1,\ gP_0>0\)。若 \(gP_0<0\)，\(\phi\) 整体加 \(\pi\)。
+</div>
+
+<script>
+(() => {
+
+const Lb = 1.0, Au = 1.0;
+const k = 2*Math.PI/Lb;
+
+const ycSlider = document.getElementById('yc');
+const ycText = document.getElementById('ycText');
+const info = document.getElementById('info');
+
+const c1 = document.getElementById('c1'), ctx1 = c1.getContext('2d');
+const c2 = document.getElementById('c2'), ctx2 = c2.getContext('2d');
+const c3 = document.getElementById('c3'), ctx3 = c3.getContext('2d');
+
+function hBow(y, yc){
+  if (y <= yc) return y / yc;
+  return (Lb - y) / (Lb - yc);
+}
+
+function phiStar(yc){
+  return Math.PI/2 - Math.PI*yc/Lb;
+}
+
+function u(y, phi){
+  return Au * (Math.sin(k*y + phi) - Math.sin(phi));
+}
+
+
+// =========================
+// ✅ 核心修改：加横线
+// =========================
+function drawAxes(ctx, w, h, xMin, xMax, yMin, yMax){
+
+  const x2p = x => (x-xMin)/(xMax-xMin)*w;
+  const y2p = y => h-(y-yMin)/(yMax-yMin)*h;
+
+  ctx.clearRect(0,0,w,h);
+
+  ctx.strokeStyle="#eee";
+  ctx.lineWidth=1;
+
+  // ✅ 竖线
+  for(let xv=0; xv<=1; xv+=0.1){
+    const px=x2p(xv);
+    ctx.beginPath();
+    ctx.moveTo(px,0);
+    ctx.lineTo(px,h);
+    ctx.stroke();
+  }
+
+  // ✅ 横线（关键新增）
+  for(let yv=yMin; yv<=yMax; yv+=(yMax-yMin)/10){
+    const py=y2p(yv);
+    ctx.beginPath();
+    ctx.moveTo(0,py);
+    ctx.lineTo(w,py);
+    ctx.stroke();
+  }
+
+  // x轴
+  ctx.strokeStyle="#666";
+  const py0 = y2p(0);
+  ctx.beginPath();
+  ctx.moveTo(0,py0);
+  ctx.lineTo(w,py0);
+  ctx.stroke();
+
+  return {x2p,y2p};
+}
+
+
+function drawCurve(ctx, map, f, x0, x1, color){
+  const {x2p,y2p}=map;
+  ctx.strokeStyle=color;
+  ctx.lineWidth=2;
+
+  ctx.beginPath();
+  for(let i=0;i<=500;i++){
+    const x=x0+(x1-x0)*i/500;
+    const y=f(x);
+    const px=x2p(x), py=y2p(y);
+    if(i===0) ctx.moveTo(px,py);
+    else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+
+function update(){
+
+  const ycRatio = parseFloat(ycSlider.value);
+  const yc = ycRatio * Lb;
+  ycText.textContent = ycRatio.toFixed(3);
+
+  const phi = phiStar(yc);
+
+  // (a)
+  const map1 = drawAxes(ctx1, c1.width, c1.height, 0, Lb, -0.05, 1.1);
+  drawCurve(ctx1, map1, y=>hBow(y,yc), 0, Lb, "#2d9cdb");
+
+  ctx1.setLineDash([5,5]);
+  ctx1.strokeStyle="#d33";
+  ctx1.beginPath();
+  ctx1.moveTo(map1.x2p(yc),0);
+  ctx1.lineTo(map1.x2p(yc),c1.height);
+  ctx1.stroke();
+  ctx1.setLineDash([]);
+
+  ctx1.fillStyle="#d33";
+  ctx1.beginPath();
+  ctx1.arc(map1.x2p(yc), map1.y2p(1), 4, 0, 2*Math.PI);
+  ctx1.fill();
+
+
+  // (b)
+  const map2 = drawAxes(ctx2, c2.width, c2.height, 0, Lb, -2, 2);
+  drawCurve(ctx2, map2, y=>u(y,phi), 0, Lb, "#f2c94c");
+
+  ctx2.fillStyle="#d33";
+  [[0,0],[Lb,0]].forEach(([x,y])=>{
+    ctx2.beginPath();
+    ctx2.arc(map2.x2p(x), map2.y2p(y), 4, 0, 2*Math.PI);
+    ctx2.fill();
+  });
+
+
+  // (c)
+  const map3 = drawAxes(ctx3, c3.width, c3.height, 0.05, 0.95, -2, 2);
+  drawCurve(ctx3, map3, r=>phiStar(r*Lb), 0.05, 0.95, "#111");
+
+  ctx3.fillStyle="#d33";
+  ctx3.beginPath();
+  ctx3.arc(map3.x2p(ycRatio), map3.y2p(phi), 4.5, 0, 2*Math.PI);
+  ctx3.fill();
+
+
+  // 信息
+  const u0 = u(0,phi), uL = u(Lb,phi);
+
+  info.innerHTML =
+    `\\(y_c / L_b = ${ycRatio.toFixed(3)}\\)<br>` +
+    `\\(\\phi(y_c) = ${phi.toFixed(4)}\\,\\text{rad}\\)<br>` +
+    `\\(u(0) = ${u0.toExponential(2)},\\quad u(L_b) = ${uL.toExponential(2)}\\)`;
+
+  // ✅ 关键：重新渲染公式
+  MathJax.typesetPromise([info]);
+}
+
+ycSlider.addEventListener('input', update);
+update();
+
+})();
+</script>
+
+</body>
+</html>
